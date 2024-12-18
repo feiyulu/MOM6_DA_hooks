@@ -43,6 +43,7 @@ module ocean_da_types_mod
   integer, save, public :: ODA_XBT = 2
   integer, save, public :: ODA_MRB = 3
   integer, save, public :: ODA_OISST = 4
+  integer, save, public :: ODA_SSS = 5
 
 !> Type for ocean state in DA space (same decomposition and vertical grid)
   type, public :: OCEAN_CONTROL_STRUCT

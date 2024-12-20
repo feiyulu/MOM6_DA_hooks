@@ -46,10 +46,9 @@ module ocean_da_types_mod
   integer, save, public :: ODA_SSS = 5
 
 !> Type for ocean state in DA space (same decomposition and vertical grid)
-  type, public :: OCEAN_CONTROL_STRUCT
+  type, public :: ensemble_control_struct
      integer :: ensemble_size
      real, pointer, dimension(:,:,:) :: SSH=>NULL() !<sea surface height (m) across ensembles
-     real, pointer, dimension(:,:,:,:) :: h=>NULL() !<layer thicknesses (m or kg) across ensembles
      real, pointer, dimension(:,:,:,:) :: T=>NULL() !<layer potential temperature (degC) across ensembles
      real, pointer, dimension(:,:,:,:) :: S=>NULL() !<layer salinity (psu or g kg-1) across ensembles
      real, pointer, dimension(:,:,:,:) :: U=>NULL() !<layer zonal velocity (m s-1) across ensembles
@@ -57,7 +56,18 @@ module ocean_da_types_mod
      integer, dimension(:), pointer :: id_t=>NULL(), id_s=>NULL()  !< diagnostic IDs for temperature and salinity
      integer, dimension(:), pointer :: id_u=>NULL(), id_v=>NULL()     !< diagnostic IDs for zonal and meridional velocity
      integer, dimension(:), pointer :: id_ssh=>NULL()  !< diagnostic IDs for SSH
-  end type OCEAN_CONTROL_STRUCT
+  end type ensemble_control_struct
+
+   type, public :: ocean_control_struct
+      real, pointer, dimension(:,:) :: SSH=>NULL() !<sea surface height (m) across ensembles
+      real, pointer, dimension(:,:,:) :: T=>NULL() !<layer potential temperature (degC) across ensembles
+      real, pointer, dimension(:,:,:) :: S=>NULL() !<layer salinity (psu or g kg-1) across ensembles
+      real, pointer, dimension(:,:,:) :: U=>NULL() !<layer zonal velocity (m s-1) across ensembles
+      real, pointer, dimension(:,:,:) :: V=>NULL() !<layer meridional velocity (m s-1) across ensembles
+      integer, dimension(:), pointer :: id_t=>NULL(), id_s=>NULL()  !< diagnostic IDs for temperature and salinity
+      integer, dimension(:), pointer :: id_u=>NULL(), id_v=>NULL()     !< diagnostic IDs for zonal and meridional velocity
+      integer, dimension(:), pointer :: id_ssh=>NULL()  !< diagnostic IDs for SSH
+   end type ocean_control_struct
 
   type, public :: ocean_profile_type
      integer :: variable !< variable ids are defined by the ocean_types module (e.g. TEMP_ID, SALT_ID)

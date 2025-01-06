@@ -58,6 +58,7 @@ module ocean_da_types_mod
      integer, dimension(:), pointer :: id_ssh=>NULL()  !< diagnostic IDs for SSH
   end type ensemble_control_struct
 
+!> Type for ocean state accumultion in model space (same decomposition and vertical grid)
    type, public :: ocean_control_struct
       real, pointer, dimension(:,:) :: SSH=>NULL() !<sea surface height (m) across ensembles
       real, pointer, dimension(:,:,:) :: T=>NULL() !<layer potential temperature (degC) across ensembles

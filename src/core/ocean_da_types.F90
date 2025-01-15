@@ -61,6 +61,12 @@ module ocean_da_types_mod
 !> Type for ocean state accumultion in model space (same decomposition and vertical grid)
    type, public :: ocean_control_struct
       real, pointer, dimension(:,:) :: SSH=>NULL() !<sea surface height (m) across ensembles
+      real, pointer, dimension(:,:) :: taux=>NULL() !<zonal wind stress
+      real, pointer, dimension(:,:) :: tauy=>NULL() !<meridional wind stress
+      real, pointer, dimension(:,:) :: latent=>NULL() !<latent heat flux
+      real, pointer, dimension(:,:) :: sensible=>NULL() !<sensile heat flux
+      real, pointer, dimension(:,:) :: lw=>NULL() !<longwave radiation flux
+      real, pointer, dimension(:,:) :: sw=>NULL() !<shortwave radiation flux
       real, pointer, dimension(:,:,:) :: T=>NULL() !<layer potential temperature (degC) across ensembles
       real, pointer, dimension(:,:,:) :: S=>NULL() !<layer salinity (psu or g kg-1) across ensembles
       real, pointer, dimension(:,:,:) :: U=>NULL() !<layer zonal velocity (m s-1) across ensembles

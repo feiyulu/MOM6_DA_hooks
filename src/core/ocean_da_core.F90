@@ -1305,7 +1305,7 @@ contains
                depth = 0.5
                flag = .true.
 
-               if ( data .gt. 50 .or. data .lt. -5 ) then
+               if ( data .gt. 40 .or. data .lt. 25 ) then
                   flag = .false.
                end if
 

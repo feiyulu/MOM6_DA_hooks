@@ -84,11 +84,13 @@ module ocean_da_core_mod
   logical :: temp_obs, salt_obs
   integer :: max_files = 30
   real :: shelf_depth = 500.0
+  real :: sfc_shelf_depth = 50.0
   namelist /ocean_obs_nml/ max_levels, obs_sbound, obs_nbound, depth_cut, &
           data_window, sec_offset, day_offset, temp_error, salt_error, impact_levels, &
           temp_dist, salt_dist, temp_to_salt, salt_to_temp, &
           sst_vimpact_temp, sst_vimpact_levels, &
-          temp_obs, salt_obs, max_files, obs_days_minus, obs_days_plus
+          temp_obs, salt_obs, max_files, obs_days_minus, obs_days_plus, &
+          shelf_depth, sfc_shelf_depth
 
 contains
 
@@ -598,7 +600,7 @@ contains
        end if
 
        if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-          call check_mask_depth_shelf("open_profile_dataset", Prof, T_grid, i0, j0, ieg, jeg, nk)
+          call check_mask_depth_shelf("open_profile_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
        end if ! determine vertical position and check mask at depth
 
        if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -926,7 +928,7 @@ contains
        end if
 
        if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-          call check_mask_depth_shelf("open_argo_dataset", Prof, T_grid, i0, j0, ieg, jeg, nk)
+          call check_mask_depth_shelf("open_argo_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
        end if ! determine vertical position and check mask at depth
 
        if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -1150,7 +1152,11 @@ contains
                 Prof%k_index(kk) = 0.0
              end do
           end if ! determine vertical position and check mask at depth
-   
+
+          if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
+            call check_mask_depth_shelf("open_oisst_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
+          end if ! determine vertical position and check mask at depth
+
           if ( Prof%accepted ) then ! calculate forward operator indices and weights
              call calculate_fwd_op_ind_wts("open_oisst_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
           endif ! calculate forward operator indices and weights
@@ -1373,6 +1379,10 @@ contains
                   end do
                end if ! determine vertical position and check mask at depth
 
+               if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
+                  call check_mask_depth_shelf("open_sss_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
+               end if ! determine vertical position and check mask at depth
+
                if ( Prof%accepted ) then ! calculate forward operator indices and weights
                   call calculate_fwd_op_ind_wts("open_sss_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
                endif ! calculate forward operator indices and weights
@@ -1589,7 +1599,7 @@ contains
 
 !Start of common mask_depth_check code ?
           if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-             call check_mask_depth_shelf("open_mooring_dataset", Prof, T_grid, i0, j0, ieg, jeg, nk)
+             call check_mask_depth_shelf("open_mooring_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
           end if ! determine vertical position and check mask at depth
    
           if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -1722,17 +1732,6 @@ contains
         state_index(7) = k0*blk + (jj-jsd+1)*lon_len + ii-isd + 1
         state_index(8) = k0*blk + (jj-jsd+1)*lon_len + ii-isd + 2
       end if
-  
-      !do i = 1, 8
-      !  if ( state_index( i ) < 0 ) then
-      !    write (UNIT=emsg_local, FMT='("state_index(",I1,") = ",I8," < 0 at &
-      !            [ii,jj] = [",I5,",",I5,"] within [isc,iec] = [",I5,",",I5,"] &
-      !            and [jsc,jec] = [",I5,",",I5,"], with halox = ",I5,", haloy = ",I5,", &
-      !            k0 = ",I5,", blk = ",I5,", nk = ",I5)') &
-      !            i, state_index( i ), ii, jj, isc, iec, jsc, jec, halox, haloy, k0, blk, nk
-      !    call error_mesg('ocean_da_core_mod::'//trim(caller_routine), trim(emsg_local), FATAL)
-      !  end if
-      !end do
 
       if ( frac_lon == 0.0 ) then
         state_index(2) = state_index(1)
@@ -1853,9 +1852,10 @@ contains
   end subroutine calc_interp_coeffs
 
 
-  subroutine check_mask_depth_shelf(caller_routine, Prof, T_grid, i0, j0, ieg, jeg, nk)
+  subroutine check_mask_depth_shelf(caller_routine, Prof, depth, T_grid, i0, j0, ieg, jeg, nk)
     character(len=*),                 intent(in)    :: caller_routine
     type(ocean_profile_type), pointer, intent(inout) :: Prof
+    real,                              intent(in)    :: depth
     type(grid_type),          pointer, intent(in)    :: T_grid !< MOM grid type for the local domain
     integer,                           intent(in)    :: i0, j0, ieg, jeg, nk
 
@@ -1868,10 +1868,10 @@ contains
             & T_grid%mask(i0+1,j0+1,1) == 0.0 ) then
           Prof%accepted = .false.
        end if
-       if (T_grid%bathyT(i0,j0) < shelf_depth .or.&
-            & T_grid%bathyT(i0+1,j0) < shelf_depth .or.&
-            & T_grid%bathyT(i0,j0+1) < shelf_depth .or.&
-            & T_grid%bathyT(i0+1,j0+1) < shelf_depth ) then
+       if (T_grid%bathyT(i0,j0) < depth .or.&
+            & T_grid%bathyT(i0+1,j0) < depth .or.&
+            & T_grid%bathyT(i0,j0+1) < depth .or.&
+            & T_grid%bathyT(i0+1,j0+1) < depth ) then
           Prof%accepted = .false.
        end if
     else if ( i0 == ieg .and. j0 /= jeg ) then
@@ -1881,25 +1881,25 @@ contains
             & T_grid%mask(1,j0+1,1) == 0.0 ) then
           Prof%accepted = .false.
        end if
-       if (T_grid%bathyT(i0,j0) < shelf_depth .or.&
-            & T_grid%bathyT(1,j0) < shelf_depth .or.&
-            & T_grid%bathyT(i0,j0+1) < shelf_depth .or.&
-            & T_grid%bathyT(1,j0+1) < shelf_depth ) then
+       if (T_grid%bathyT(i0,j0) < depth .or.&
+            & T_grid%bathyT(1,j0) < depth .or.&
+            & T_grid%bathyT(i0,j0+1) < depth .or.&
+            & T_grid%bathyT(1,j0+1) < depth ) then
           Prof%accepted = .false.
        end if
     else if ( i0 /= ieg .and. j0 == jeg ) then
        if ( T_grid%mask(i0,j0,1) == 0.0 .or. T_grid%mask(i0+1,j0,1) == 0.0 ) then
           Prof%accepted = .false.
        end if
-       if ( T_grid%bathyT(i0,j0) < shelf_depth .or.&
-             & T_grid%bathyT(i0+1,j0) < shelf_depth ) then
+       if ( T_grid%bathyT(i0,j0) < depth .or.&
+             & T_grid%bathyT(i0+1,j0) < depth ) then
           Prof%accepted = .false.
        end if
     else
        if ( T_grid%mask(i0,j0,1) == 0.0 ) then
           Prof%accepted = .false.
        end if
-       if ( T_grid%bathyT(i0,j0) < shelf_depth ) then
+       if ( T_grid%bathyT(i0,j0) < depth ) then
           Prof%accepted = .false.
        end if
     end if

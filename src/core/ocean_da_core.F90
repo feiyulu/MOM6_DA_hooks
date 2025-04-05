@@ -1118,6 +1118,9 @@ contains
              Prof%accepted = .false.
           else
              Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
+             if (Prof%basin_mask == 0) then
+               Prof%accepted = .false.
+            end if
           end if
 
          !Start of common mask_depth_check code but this does not check shelf_depth!
@@ -1341,7 +1344,7 @@ contains
                   Prof%accepted = .false.
                else
                   Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
-                  if (Prof%basin_mask == 4 .or. Prof%basin_mask >= 7) then
+                  if (Prof%basin_mask == 0 .or. Prof%basin_mask == 4 .or. Prof%basin_mask == 8 .or. Prof%basin_mask == 9) then
                      Prof%accepted = .false.
                   end if
                end if

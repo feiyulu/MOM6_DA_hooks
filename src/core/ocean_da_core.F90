@@ -600,7 +600,7 @@ contains
        end if
 
        if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-          call check_mask_depth_shelf("open_profile_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
+          call check_mask_depth_shelf("open_profile_dataset", Prof, shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
        end if ! determine vertical position and check mask at depth
 
        if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -921,20 +921,25 @@ contains
 
        Prof%accepted = .true.
 
-       if (i0 < 1 .or. j0 < 1) then
-          Prof%accepted = .false.
+       data_is_local = within_domain(i0, j0, isd+1, ied-1, jsd+1, jed-1, ni, nj)
+
+       if(data_is_local) then
+         if (i0 < 1 .or. j0 < 1) then
+            Prof%accepted = .false.
+         else
+            Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
+
+            if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
+               call check_mask_depth_shelf("open_argo_dataset", Prof, shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
+            end if ! determine vertical position and check mask at depth
+
+            if ( Prof%accepted ) then ! calculate forward operator indices and weights
+               call calculate_fwd_op_ind_wts("open_argo_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
+            endif ! calculate forward operator indices and weights
+         end if
        else
-          Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
-       end if
-
-       if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-          call check_mask_depth_shelf("open_argo_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
-       end if ! determine vertical position and check mask at depth
-
-       if ( Prof%accepted ) then ! calculate forward operator indices and weights
-          call calculate_fwd_op_ind_wts("open_argo_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
-       endif ! calculate forward operator indices and weights
-
+         Prof%accepted = .false.
+       endif
       !if ( var_id == TEMP_ID .and. profile_count > 0 ) call xbt_drop_rate_adjust(profiles(profile_count))
 
        if ( station_count .gt. nstation ) cont = .false.
@@ -1016,7 +1021,6 @@ contains
     lon_len = ied-isd+1
     blk = (jed-jsd+1)*lon_len
     stdout_unit = stdout()
-
     inst_type = ODA_OISST
     var_id = obs_variable
 
@@ -1114,55 +1118,25 @@ contains
 
           Prof%accepted = .true.
 
-          if (i0 < 1 .or. j0 < 1) then
-             Prof%accepted = .false.
-          else
-             Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
-             if (Prof%basin_mask == 0) then
+          data_is_local = within_domain(i0, j0, isd+1, ied-1, jsd+1, jed-1, ni, nj)
+
+          if(data_is_local) then
+            if (i0 < 1 .or. j0 < 1) then
                Prof%accepted = .false.
+            else
+               Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
+   
+               if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
+                  call check_mask_depth_shelf("open_oisst_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
+               end if ! determine vertical position and check mask at depth
+   
+               if ( Prof%accepted ) then ! calculate forward operator indices and weights
+                  call calculate_fwd_op_ind_wts("open_oisst_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
+               endif ! calculate forward operator indices and weights
             end if
-          end if
-
-         !Start of common mask_depth_check code but this does not check shelf_depth!
-          if ( Prof%accepted ) then ! check surface land-sea mask
-             if ( i0 /= ieg .and. j0 /= jeg ) then
-                if (T_grid%mask(i0,j0,1) == 0.0 .or.&
-                     & T_grid%mask(i0+1,j0,1) == 0.0 .or.&
-                     & T_grid%mask(i0,j0+1,1) == 0.0 .or.&
-                     & T_grid%mask(i0+1,j0+1,1) == 0.0 ) then
-                   Prof%accepted = .false.
-                end if
-             else if ( i0 == ieg .and. j0 /= jeg ) then
-                if (T_grid%mask(i0,j0,1) == 0.0 .or.&
-                     & T_grid%mask(1,j0,1) == 0.0 .or.&
-                     & T_grid%mask(i0,j0+1,1) == 0.0 .or.&
-                     & T_grid%mask(1,j0+1,1) == 0.0 ) then
-                   Prof%accepted = .false.
-                end if
-             else if ( i0 /= ieg .and. j0 == jeg ) then
-                if ( T_grid%mask(i0,j0,1) == 0.0 .or. T_grid%mask(i0+1,j0,1) == 0.0 ) then
-                   Prof%accepted = .false.
-                end if
-             else
-                if ( T_grid%mask(i0,j0,1) == 0.0 ) then
-                   Prof%accepted = .false.
-                end if
-             end if
-          end if ! check surface land-sea mask
-          if ( Prof%accepted ) then ! determine vertical position and check mask at depth
-             allocate(Prof%k_index(Prof%levels))
-             do kk=1, Prof%levels
-                Prof%k_index(kk) = 0.0
-             end do
-          end if ! determine vertical position and check mask at depth
-
-          if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-            call check_mask_depth_shelf("open_oisst_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
-          end if ! determine vertical position and check mask at depth
-
-          if ( Prof%accepted ) then ! calculate forward operator indices and weights
-             call calculate_fwd_op_ind_wts("open_oisst_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
-          endif ! calculate forward operator indices and weights
+          else
+            Prof%accepted = .false.
+          endif
    
           allocate(Prof%next) ! allocate next profile and link it to current one
           Prof%next%prev=>Prof
@@ -1349,41 +1323,8 @@ contains
                   end if
                end if
 
-               !Start of common mask_depth_check code but this does not check shelf_depth!
-               if ( Prof%accepted ) then ! check surface land-sea mask
-                  if ( i0 /= ieg .and. j0 /= jeg ) then
-                     if (T_grid%mask(i0,j0,1) == 0.0 .or.&
-                           & T_grid%mask(i0+1,j0,1) == 0.0 .or.&
-                           & T_grid%mask(i0,j0+1,1) == 0.0 .or.&
-                           & T_grid%mask(i0+1,j0+1,1) == 0.0 ) then
-                        Prof%accepted = .false.
-                     end if
-                  else if ( i0 == ieg .and. j0 /= jeg ) then
-                     if (T_grid%mask(i0,j0,1) == 0.0 .or.&
-                           & T_grid%mask(1,j0,1) == 0.0 .or.&
-                           & T_grid%mask(i0,j0+1,1) == 0.0 .or.&
-                           & T_grid%mask(1,j0+1,1) == 0.0 ) then
-                        Prof%accepted = .false.
-                     end if
-                  else if ( i0 /= ieg .and. j0 == jeg ) then
-                     if ( T_grid%mask(i0,j0,1) == 0.0 .or. T_grid%mask(i0+1,j0,1) == 0.0 ) then
-                        Prof%accepted = .false.
-                     end if
-                  else
-                     if ( T_grid%mask(i0,j0,1) == 0.0 ) then
-                        Prof%accepted = .false.
-                     end if
-                  end if
-               end if ! check surface land-sea mask
-               if ( Prof%accepted ) then ! determine vertical position and check mask at depth
-                  allocate(Prof%k_index(Prof%levels))
-                  do kk=1, Prof%levels
-                     Prof%k_index(kk) = 0.0
-                  end do
-               end if ! determine vertical position and check mask at depth
-
                if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-                  call check_mask_depth_shelf("open_sss_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
+                  call check_mask_depth_shelf("open_sss_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
                end if ! determine vertical position and check mask at depth
 
                if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -1602,7 +1543,7 @@ contains
 
 !Start of common mask_depth_check code ?
           if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-             call check_mask_depth_shelf("open_mooring_dataset", Prof, shelf_depth, T_grid, i0, j0, ieg, jeg, nk)
+             call check_mask_depth_shelf("open_mooring_dataset", Prof, shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
           end if ! determine vertical position and check mask at depth
    
           if ( Prof%accepted ) then ! calculate forward operator indices and weights
@@ -1855,14 +1796,20 @@ contains
   end subroutine calc_interp_coeffs
 
 
-  subroutine check_mask_depth_shelf(caller_routine, Prof, depth, T_grid, i0, j0, ieg, jeg, nk)
+  subroutine check_mask_depth_shelf(caller_routine, Prof, depth, T_grid, i, j, isd, ied, jsd, jed, ieg, jeg, nk)
     character(len=*),                 intent(in)    :: caller_routine
     type(ocean_profile_type), pointer, intent(inout) :: Prof
     real,                              intent(in)    :: depth
     type(grid_type),          pointer, intent(in)    :: T_grid !< MOM grid type for the local domain
-    integer,                           intent(in)    :: i0, j0, ieg, jeg, nk
+    integer,                           intent(in)    :: i, j, isd, ied, jsd, jed, ieg, jeg, nk
 
-    integer :: k ,k0
+    integer :: k ,k0, i0, j0
+
+    i0=i-isd+1; j0=j-jsd+1
+    if(i0<0) i0=i0+ieg
+    if(i0>ieg) i0=i0-ieg
+    if(j0<0) j0=j0+jeg
+    if(j0>jeg) j0=j0-jeg
     ! check surface land-sea mask and depth of ocean around profile location
     if ( i0 /= ieg .and. j0 /= jeg ) then
        if (T_grid%mask(i0,j0,1) == 0.0 .or.&
@@ -1912,6 +1859,7 @@ contains
     if ( Prof%accepted ) then ! determine vertical position and check mask at depth
        allocate(Prof%k_index(Prof%levels))
        do k=1, Prof%levels
+         if (i0<0 .and. j0<0) print *, 'Indices:', i0, j0
           Prof%k_index(k) = frac_index(Prof%depth(k), (/T_grid%z(i0,j0,:)/))
           if ( Prof%k_index(k) < 1.0 ) then
              if ( Prof%depth(k) < T_grid%z(i0,j0,1) ) then

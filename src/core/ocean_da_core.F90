@@ -1314,22 +1314,29 @@ contains
 
                Prof%accepted = .true.
 
-               if (i0 < 1 .or. j0 < 1) then
-                  Prof%accepted = .false.
-               else
-                  Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
-                  if (Prof%basin_mask == 0 .or. Prof%basin_mask == 4 .or. Prof%basin_mask == 8 .or. Prof%basin_mask == 9) then
+               data_is_local = within_domain(i0, j0, isd+1, ied-1, jsd+1, jed-1, ni, nj)
+
+               if(data_is_local) then
+                  if (i0 < 1 .or. j0 < 1) then
                      Prof%accepted = .false.
+                  else
+                     Prof%basin_mask = T_grid%basin_mask(lon1d(inds(1)),lat1d(inds(1)))
+                     ! if (Prof%basin_mask == 0 .or. Prof%basin_mask == 4 .or. Prof%basin_mask == 8 .or. Prof%basin_mask == 9 ) then
+                     !    Prof%accepted = .false.
+                     ! end if
+
+                     if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
+                        call check_mask_depth_shelf("open_sss_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
+                     end if ! determine vertical position and check mask at depth
+
+                     if ( Prof%accepted ) then ! calculate forward operator indices and weights
+                        call calculate_fwd_op_ind_wts("open_sss_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
+                     endif ! calculate forward operator indices and weights
+
                   end if
-               end if
-
-               if ( Prof%accepted ) then ! check surface land-sea mask and depth of ocean around profile location
-                  call check_mask_depth_shelf("open_sss_dataset", Prof, sfc_shelf_depth, T_grid, i0, j0, isd, ied, jsd, jed, ieg, jeg, nk)
-               end if ! determine vertical position and check mask at depth
-
-               if ( Prof%accepted ) then ! calculate forward operator indices and weights
-                  call calculate_fwd_op_ind_wts("open_sss_dataset",Prof, i0, j0, lon_len, blk, ni,nk, isd, ied,jsd,jed)
-               endif ! calculate forward operator indices and weights
+               else
+                  Prof%accepted = .false.
+               endif
 
                allocate(Prof%next) ! allocate next profile and link it to current one
                Prof%next%prev=>Prof
